@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Video Studio</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>🎬 AI Video Studio</h1>
+    <p>Nhập chủ đề → AI viết kịch bản, tạo hình ảnh/video, lồng tiếng và ghép thành video hoàn chỉnh.</p>
+  </header>
+
+  <main>
+    <form id="form" class="card">
+      <label class="full">Chủ đề / ý tưởng video
+        <textarea name="topic" rows="3" required placeholder="VD: 5 sự thật thú vị về cà phê Việt Nam"></textarea>
+      </label>
+
+      <label>Ngôn ngữ lời đọc
+        <select name="language">
+          <option>Tiếng Việt</option><option>English</option><option>ภาษาไทย</option>
+          <option>日本語</option><option>한국어</option><option>中文</option>
+        </select>
+      </label>
+      <label>Khung hình
+        <select name="aspect">
+          <option value="9:16">9:16 – TikTok / Reels / Shorts</option>
+          <option value="16:9">16:9 – YouTube</option>
+          <option value="1:1">1:1 – Vuông</option>
+        </select>
+      </label>
+      <label>Thời lượng (giây)
+        <input type="number" name="durationSec" min="5" max="600" value="30" />
+      </label>
+      <label>Số cảnh
+        <input type="number" name="sceneCount" min="1" max="30" value="5" />
+      </label>
+      <label class="full">Phong cách hình ảnh
+        <input name="style" value="cinematic, photorealistic, soft lighting" />
+      </label>
+
+      <fieldset class="full">
+        <legend>Model AI</legend>
+        <div class="grid">
+          <label>✍️ Kịch bản (LLM) <select name="llm" data-kind="llm"></select></label>
+          <label>🎞️ Kiểu hình ảnh
+            <select name="visualMode">
+              <option value="image">Ảnh AI + hiệu ứng chuyển động</option>
+              <option value="video">Video clip AI (chậm & đắt hơn)</option>
+            </select>
+          </label>
+          <label>🖼️ Tạo ảnh <select name="image" data-kind="image"></select></label>
+          <label id="videoField">🎥 Tạo video <select name="video" data-kind="video"></select></label>
+          <label>🔊 Giọng đọc (TTS) <select name="tts" data-kind="tts"></select></label>
+          <label>Giọng (tuỳ chọn)
+            <input name="voice" placeholder="VD: alloy / nova, hoặc voice_id ElevenLabs" />
+          </label>
+        </div>
+        <p class="hint">Provider có dấu ⚠️ chưa có API key trong file <code>.env</code>. Chọn “Mock” để chạy thử miễn phí.</p>
+      </fieldset>
+
+      <label class="check full"><input type="checkbox" name="subtitles" checked /> Gắn phụ đề (SRT) vào video</label>
+
+      <button type="submit" class="full" id="submit">🚀 Tạo video</button>
+      <p id="formError" class="error full" hidden></p>
+    </form>
+
+    <section id="jobView" class="card" hidden>
+      <div class="job-head">
+        <h2 id="jobTitle">Đang xử lý…</h2>
+        <span id="jobStatus" class="badge"></span>
+      </div>
+      <div class="progress"><div id="bar"></div></div>
+      <p id="jobStep" class="muted"></p>
+      <div id="result" hidden>
+        <video id="player" controls playsinline></video>
+        <div class="links">
+          <a id="dlVideo" download>⬇️ Tải video</a>
+          <a id="dlSrt" download>⬇️ Phụ đề .srt</a>
+          <a id="dlScript" target="_blank">📄 Kịch bản JSON</a>
+        </div>
+      </div>
+      <details id="scriptBox" hidden>
+        <summary>Kịch bản</summary>
+        <ol id="scenes"></ol>
+      </details>
+      <details open>
+        <summary>Nhật ký</summary>
+        <pre id="logs"></pre>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2>Lịch sử</h2>
+      <ul id="history" class="history"><li class="muted">Chưa có video nào.</li></ul>
+    </section>
+  </main>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>
