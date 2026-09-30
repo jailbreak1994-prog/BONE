@@ -129,3 +129,22 @@ export async function mixMusic({ video, music, dest, volume = 0.15 }) {
     dest,
   ]);
 }
+
+/**
+ * Ghép giọng đọc của các cảnh thành một track: mỗi câu bắt đầu đúng đầu cảnh,
+ * phần còn lại của cảnh là khoảng lặng. parts = [{ file | null, duration }]
+ */
+export async function buildVoiceTrack(parts, dest) {
+  const args = [];
+  const filters = [];
+  parts.forEach((p, i) => {
+    if (p.file) args.push("-i", p.file);
+    else args.push("-f", "lavfi", "-t", p.duration.toFixed(3), "-i", "anullsrc=r=44100:cl=stereo");
+    filters.push(
+      `[${i}:a]aresample=44100,aformat=channel_layouts=stereo,apad=whole_dur=${p.duration.toFixed(3)},atrim=0:${p.duration.toFixed(3)}[a${i}]`,
+    );
+  });
+  const inputs = parts.map((_, i) => `[a${i}]`).join("");
+  filters.push(`${inputs}concat=n=${parts.length}:v=0:a=1[out]`);
+  return runFfmpeg([...args, "-filter_complex", filters.join(";"), "-map", "[out]", "-c:a", "libmp3lame", "-b:a", "192k", dest]);
+}

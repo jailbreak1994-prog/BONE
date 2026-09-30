@@ -16,6 +16,7 @@ Giao diện kiểu studio gồm 4 tab:
 | **Ảnh** | Tạo ảnh từ mô tả; chọn model, chất lượng, tỉ lệ, số lượng; tối đa 8 ảnh tham chiếu (GPT Image, Nano Banana) |
 | **Video** | Tạo clip từ kịch bản chuyển động + ảnh đầu / ảnh cuối; chọn tỉ lệ, thời lượng |
 | **Giọng đọc** | Chuyển văn bản thành giọng nói mp3 |
+| **Frame Flow** | Chat với AI để tạo video **motion graphics**: Prompt → Cảnh AI → Giọng đọc → Code & Motion → Render |
 
 Cột phải là thư viện lịch sử (tìm kiếm, sắp xếp Mới/Cũ, chỉnh cỡ lưới, xem, tải, xoá). Ảnh đã tạo có thể
 bấm 🎬 để dùng làm ảnh đầu cho video. Lịch sử được lưu trong `output/library.json` nên khởi động lại vẫn còn.
@@ -32,6 +33,21 @@ Chủ đề ──► LLM ──► kịch bản (N cảnh: lời đọc + promp
                  ▼
      ffmpeg: dựng cảnh ► ghép ► phụ đề ► nhạc nền ► video.mp4
 ```
+
+## Frame Flow
+
+Video dạng motion graphics (chữ, số liệu, card sản phẩm, logo chuyển động) do **Claude viết code** cho từng cảnh:
+
+1. Nhập ý tưởng (có thể chọn 1 trong 4 mẫu: Typography chuyển động, Hero sản phẩm, Video giải thích,
+   Câu chuyện thương hiệu) và đính kèm logo/ảnh sản phẩm nếu có.
+2. Claude viết kịch bản, chọn màu/font, viết HTML/CSS + chuyển động GSAP cho mỗi cảnh; app tạo giọng đọc
+   (và ảnh AI nếu bật), tự canh thời lượng cảnh theo giọng, chạy thử code và nhờ AI sửa nếu lỗi.
+3. Xem trước ngay trên trang, **chat để sửa** ("cảnh 2 nền cam, chữ to hơn"), **Hoàn tác** về phiên bản trước.
+4. Bấm **Render MP4**: trình duyệt ẩn (Edge/Chrome có sẵn trên máy) phát hoạt hình từng khung hình 30 fps,
+   ffmpeg ghép với giọng đọc (và nhạc nền nếu có) thành video 1080p hoặc 720p.
+
+Cần `ANTHROPIC_API_KEY`. Model "Mock" dùng mẫu dựng sẵn để chạy thử miễn phí. Code hoạt hình do AI viết chạy
+trong sandbox, không truy cập được dữ liệu của app. Dự án lưu ở `output/flow/<id>/`.
 
 ## Cài đặt
 
@@ -95,6 +111,8 @@ src/
   server.js          HTTP server + REST API + phục vụ giao diện & file output
   tasks.js           xử lý yêu cầu đơn lẻ của tab Ảnh / Video / Giọng đọc
   library.js         thư viện lịch sử (output/library.json)
+  flow/              Frame Flow: generate.js (Claude viết cảnh), player.js (trang hoạt hình),
+                     render.js (chụp khung hình → mp4), browser.js (mở Edge/Chrome ẩn), index.js (dự án, chat, hoàn tác)
   cli.js             chạy pipeline từ dòng lệnh
   pipeline.js        điều phối các bước, hàng đợi job, tạo phụ đề SRT
   ffmpeg.js          dựng cảnh (Ken Burns / clip), ghép, trộn nhạc nền
@@ -125,6 +143,10 @@ hiển thị provider mới.
 | `POST` | `/api/generate/auto` | `{ topic, language, durationSec, sceneCount, aspect, style, visualMode, llm, image, video, tts, voice, subtitles }` |
 | `GET` | `/api/items?kind=image\|video\|audio\|auto` | Lịch sử |
 | `GET` / `DELETE` | `/api/items/:id` | Xem trạng thái / xoá một mục |
+| `GET` / `POST` | `/api/flow` | Danh sách / tạo dự án Frame Flow `{ prompt, template, aspect, durationSec, language, llm, image, tts, voice, attachments }` |
+| `GET` / `DELETE` | `/api/flow/:id` | Xem / xoá dự án |
+| `POST` | `/api/flow/:id/message` | Chat sửa `{ text, attachments, settings }` |
+| `POST` | `/api/flow/:id/undo` · `/api/flow/:id/render` | Hoàn tác · Render `{ quality: "1080p" \| "720p" }` |
 
 ## Lưu ý
 

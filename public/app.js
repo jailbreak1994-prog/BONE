@@ -1,7 +1,9 @@
+import { initFlow, showFlow, hideFlow } from "./flow.js";
+
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
-const TITLES = { auto: "Auto Video", image: "Ảnh", video: "Video", audio: "Giọng đọc" };
+const TITLES = { auto: "Auto Video", image: "Ảnh", video: "Video", audio: "Giọng đọc", flow: "Frame Flow" };
 const KIND_OF_SELECT = { image: "image", video: "video", tts: "tts", llm: "llm" };
 
 const state = {
@@ -45,10 +47,10 @@ function showError(msg) {
   $("#formError").hidden = !msg;
 }
 
-const readAsDataUrl = (file) =>
+const readAsDataUrl = (file, maxMb = 10) =>
   new Promise((resolve, reject) => {
     if (!/^image\/(png|jpeg|webp)$/.test(file.type)) return reject(new Error("Chỉ nhận ảnh PNG / JPG / WEBP"));
-    if (file.size > 10 * 1024 * 1024) return reject(new Error("Mỗi ảnh tối đa 10MB"));
+    if (file.size > maxMb * 1024 * 1024) return reject(new Error(`Mỗi ảnh tối đa ${maxMb}MB`));
     const r = new FileReader();
     r.onload = () => resolve(r.result);
     r.onerror = () => reject(r.error);
@@ -139,10 +141,18 @@ function restoreForm(form) {
 }
 
 // ---------- Tab ----------
-function setTab(tab) {
+function setTab(tab, route) {
   if (!TITLES[tab]) tab = "image";
   state.tab = tab;
   $$("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
+  const isFlow = tab === "flow";
+  $(".studio").hidden = isFlow;
+  $("#flow").hidden = !isFlow;
+  if (isFlow) {
+    showFlow(route);
+    return;
+  }
+  hideFlow();
   $$(".tool").forEach((f) => f.classList.toggle("on", f.dataset.tool === tab));
   history.replaceState(null, "", `#${tab}`);
   showError("");
@@ -546,7 +556,9 @@ async function init() {
   cols.addEventListener("input", applyCols);
   applyCols();
 
-  setTab(location.hash.slice(1) || "image");
+  initFlow({ api, toast, store, readAsDataUrl, getProviders: () => state.providers });
+  const route = location.hash.slice(1) || "image";
+  setTab(route.split("/")[0], route);
   // Tự cập nhật khi còn việc đang chạy.
   setInterval(() => {
     if (state.items.some(isActive)) loadItems();

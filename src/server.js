@@ -8,6 +8,10 @@ import { FFMPEG } from "./ffmpeg.js";
 import { addItem, getItem, listItems, loadLibrary, removeItem, saveLibrary } from "./library.js";
 import { createAudioTask, createImageTask, createVideoTask } from "./tasks.js";
 import { LLM_PROVIDERS } from "./providers/llm.js";
+import * as flow from "./flow/index.js";
+import { buildPlayerHtml } from "./flow/player.js";
+
+const GSAP_FILE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../node_modules/gsap/dist/gsap.min.js");
 
 const PUBLIC_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../public");
 const PORT = Number(process.env.PORT || 3000);
@@ -147,6 +151,46 @@ const server = http.createServer(async (req, res) => {
     if (one && req.method === "DELETE") {
       return (await removeItem(one[1])) ? sendJson(res, 200, { ok: true }) : sendJson(res, 404, { error: "Không tìm thấy" });
     }
+    // ---------- Frame Flow ----------
+    if (p === "/api/flow" && req.method === "GET") {
+      return sendJson(res, 200, { projects: flow.listProjects(), catalog: flow.flowCatalog() });
+    }
+    if (p === "/api/flow" && req.method === "POST") {
+      return sendJson(res, 202, await flow.createProject(await readBody(req, 30_000_000)));
+    }
+    const fm = p.match(/^\/api\/flow\/([\w-]+)(?:\/(message|undo|render))?$/);
+    if (fm) {
+      const [, id, action] = fm;
+      if (!action && req.method === "GET") {
+        const proj = flow.getProject(id);
+        return proj ? sendJson(res, 200, proj) : sendJson(res, 404, { error: "Không tìm thấy dự án" });
+      }
+      if (!action && req.method === "DELETE") {
+        return (await flow.deleteProject(id)) ? sendJson(res, 200, { ok: true }) : sendJson(res, 404, { error: "Không tìm thấy dự án" });
+      }
+      if (req.method === "POST" && action === "message") return sendJson(res, 202, await flow.sendMessage(id, await readBody(req, 30_000_000)));
+      if (req.method === "POST" && action === "undo") return sendJson(res, 200, await flow.undo(id));
+      if (req.method === "POST" && action === "render") return sendJson(res, 202, await flow.startRender(id, await readBody(req)));
+    }
+    const pm = p.match(/^\/flow\/([\w-]+)\/player$/);
+    if (pm && req.method === "GET") {
+      const proj = flow.getProject(pm[1]);
+      if (!proj) return sendJson(res, 404, { error: "Không tìm thấy dự án" });
+      const mode = url.searchParams.get("mode") === "render" ? "render" : "preview";
+      const scale = Math.min(Math.max(Number(url.searchParams.get("scale")) || 1, 0.1), 1);
+      res.writeHead(200, {
+        "Content-Type": MIME[".html"],
+        "Cache-Control": "no-store",
+        // Code hoạt hình do AI viết chạy trong sandbox, không truy cập được app.
+        "Content-Security-Policy": "sandbox allow-scripts",
+      });
+      return res.end(buildPlayerHtml(proj, { mode, scale }));
+    }
+    if (p === "/vendor/gsap.min.js" && req.method === "GET") {
+      res.writeHead(200, { "Content-Type": MIME[".js"], "Cache-Control": "public, max-age=86400", "Access-Control-Allow-Origin": "*" });
+      return fs.createReadStream(GSAP_FILE).pipe(res);
+    }
+
     // Giữ tương thích API cũ.
     if (p === "/api/jobs" && req.method === "POST") return sendJson(res, 202, createAutoJob(await readBody(req)));
     if (p === "/api/jobs" && req.method === "GET") return sendJson(res, 200, { jobs: listItems("auto") });
@@ -163,7 +207,10 @@ const server = http.createServer(async (req, res) => {
 
 await fsp.mkdir(OUTPUT_DIR, { recursive: true });
 loadLibrary();
+flow.loadProjects();
 server.listen(PORT, HOST, () => {
+  const local = ["0.0.0.0", "::", "127.0.0.1", "localhost"].includes(HOST) ? "127.0.0.1" : HOST;
+  flow.setBaseUrl(`http://${local}:${PORT}`);
   console.log(`🎬 AI Video Studio đang chạy: http://${HOST === "0.0.0.0" ? "localhost" : HOST}:${PORT}`);
   console.log(`   ffmpeg: ${FFMPEG}`);
   const ready = Object.entries(providerCatalog())

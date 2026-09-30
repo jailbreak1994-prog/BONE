@@ -14,6 +14,7 @@
       <button data-tab="image">Ảnh</button>
       <button data-tab="video">Video</button>
       <button data-tab="audio">Giọng đọc</button>
+      <button data-tab="flow">Frame Flow <span class="new">NEW</span></button>
     </nav>
     <button class="ghost" id="keysBtn" title="Trạng thái API key">🔑 API key</button>
   </header>
@@ -162,6 +163,90 @@
       </div>
     </section>
   </div>
+
+
+  <!-- ================= FRAME FLOW ================= -->
+  <section id="flow" hidden>
+    <!-- Màn hình đầu -->
+    <div id="flowHome" class="flow-home">
+      <div class="hero">
+        <small class="eyebrow">STUDIO SÁNG TẠO</small>
+        <h1>Frame Flow</h1>
+        <p>Từ một ý tưởng thành chuỗi cảnh, giọng đọc, chuyển động rồi video sẵn sàng đăng. Chat với AI để chỉnh sửa từng cảnh.</p>
+        <div class="pipeline"><span>Prompt</span>→<span>Cảnh AI</span>→<span>Giọng đọc</span>→<span>Code &amp; Motion</span>→<span>Render</span></div>
+      </div>
+
+      <form id="flowCreate" class="composer">
+        <textarea name="prompt" rows="3" placeholder="Mô tả video bạn muốn, VD: Video 25 giây giới thiệu cà phê phin Việt Nam, phong cách sang trọng, kết bằng logo 'Phin House'"></textarea>
+        <div class="attach-row" id="createAttachments"></div>
+        <div class="composer-bar">
+          <label class="icon-btn" title="Đính kèm ảnh (logo, sản phẩm…)">📎<input type="file" accept="image/png,image/jpeg,image/webp" multiple hidden /></label>
+          <select name="aspect" title="Tỉ lệ"><option value="9:16">9:16 Dọc</option><option value="16:9">16:9 Ngang</option><option value="1:1">1:1 Vuông</option></select>
+          <select name="durationSec" title="Thời lượng"><option value="15">~15 giây</option><option value="25" selected>~25 giây</option><option value="40">~40 giây</option><option value="60">~60 giây</option></select>
+          <select name="language" title="Ngôn ngữ"><option>Tiếng Việt</option><option>English</option><option>ภาษาไทย</option></select>
+          <select name="llm" class="flow-llm" title="AI viết chuyển động"></select>
+          <select name="image" class="flow-image" title="Ảnh AI cho cảnh"></select>
+          <select name="tts" class="flow-tts" title="Giọng đọc"></select>
+          <input name="voice" class="flow-voice" placeholder="Giọng (VD: nova)" title="Giọng đọc" />
+          <button class="primary" type="submit">＋ Tạo motion mới</button>
+        </div>
+      </form>
+
+      <h3 class="section-title"><small>GỢI Ý BẮT ĐẦU</small>Bốn hướng kể chuyện</h3>
+      <div class="templates" id="templates"></div>
+
+      <h3 class="section-title">Motion của bạn</h3>
+      <div class="projects" id="projects"></div>
+    </div>
+
+    <!-- Màn hình làm việc -->
+    <div id="flowWork" class="flow-work" hidden>
+      <div class="work-head">
+        <button class="ghost" id="flowBack">← Motion của bạn</button>
+        <h2 id="flowTitle"></h2>
+        <span class="chip" id="flowStatus"></span>
+      </div>
+      <div class="work-grid">
+        <div class="chat">
+          <div class="messages" id="messages"></div>
+          <div class="working" id="working" hidden><div class="spinner"></div><span id="workingText"></span></div>
+          <form id="chatForm" class="chat-form">
+            <div class="attach-row" id="chatAttachments"></div>
+            <textarea name="text" rows="2" placeholder="Yêu cầu chỉnh sửa, VD: cảnh 2 đổi nền màu cam, chữ to hơn…"></textarea>
+            <div class="composer-bar">
+              <label class="icon-btn" title="Đính kèm ảnh">📎<input type="file" accept="image/png,image/jpeg,image/webp" multiple hidden /></label>
+              <select name="llm" class="flow-llm" title="AI viết chuyển động"></select>
+              <select name="image" class="flow-image" title="Ảnh AI"></select>
+              <select name="tts" class="flow-tts" title="Giọng đọc"></select>
+              <input name="voice" class="flow-voice" placeholder="Giọng" />
+              <button class="primary" type="submit">Gửi ➤</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="preview">
+          <div class="stage-wrap" id="stageWrap">
+            <iframe id="playerFrame" sandbox="allow-scripts" title="Xem trước"></iframe>
+            <div class="stage-empty" id="stageEmpty">Chưa có cảnh nào</div>
+          </div>
+          <p class="error" id="playerErrors" hidden></p>
+          <div class="controls">
+            <button type="button" class="icon-btn" id="playBtn" title="Phát / dừng">▶</button>
+            <input type="range" id="seek" min="0" max="1000" value="0" />
+            <span class="time" id="timeLabel">0:00 / 0:00</span>
+          </div>
+          <div class="scene-strip" id="sceneStrip"></div>
+          <div class="render-box">
+            <button type="button" class="btn" id="undoBtn">↩ Hoàn tác</button>
+            <select id="renderQuality"><option value="1080p">1080p</option><option value="720p">720p (nhanh)</option></select>
+            <button type="button" class="btn accent" id="renderBtn">🎬 Render MP4</button>
+          </div>
+          <div class="render-status" id="renderStatus"></div>
+          <audio id="voiceAudio" preload="auto"></audio>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- Xem chi tiết -->
   <dialog id="viewer">
