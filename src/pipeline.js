@@ -29,11 +29,10 @@ export const DEFAULTS = {
 };
 
 function listProviders(registry) {
-  return Object.entries(registry).map(([id, p]) => ({
+  return Object.entries(registry).map(([id, { run, ...meta }]) => ({
     id,
-    name: p.name,
-    ready: !p.env || Boolean(process.env[p.env]),
-    env: p.env,
+    ...meta,
+    ready: !meta.env || Boolean(process.env[meta.env]),
   }));
 }
 
@@ -154,7 +153,7 @@ export async function runJob(job, onUpdate = () => {}) {
       if (videoProvider) {
         try {
           visual = await generateVideo(opts.video, {
-            prompt, image: visual, aspect: opts.aspect, dest: path.join(dir, `scene${i + 1}.clip.mp4`),
+            prompt, image: visual, aspect: opts.aspect, size, dest: path.join(dir, `scene${i + 1}.clip.mp4`),
           });
           visualType = "video";
           update({}, `${tag}: đã tạo video clip`);

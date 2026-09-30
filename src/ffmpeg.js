@@ -21,6 +21,8 @@ export const SIZES = {
   "16:9": { w: 1280, h: 720 },
   "9:16": { w: 720, h: 1280 },
   "1:1": { w: 1080, h: 1080 },
+  "4:3": { w: 1024, h: 768 },
+  "3:4": { w: 768, h: 1024 },
 };
 
 const FPS = 30;
@@ -59,6 +61,18 @@ export function silentAudio(dest, seconds) {
 /** Ảnh nền màu đặc – dùng cho provider "mock" để thử pipeline không tốn API. */
 export function solidImage(dest, color, { w, h }) {
   return runFfmpeg(["-f", "lavfi", "-i", `color=c=${color}:s=${w}x${h}`, "-frames:v", "1", dest]);
+}
+
+/** Clip mẫu (không gọi API): ảnh đầu vào chuyển động nhẹ, hoặc hình test màu. */
+export function mockClip(dest, { w, h }, seconds, image) {
+  const out = ["-t", String(seconds), "-r", "30", "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p", dest];
+  if (image) {
+    const frames = Math.ceil(seconds * 30);
+    const vf = `scale=${w * 2}:${h * 2}:force_original_aspect_ratio=increase,crop=${w * 2}:${h * 2},` +
+      `zoompan=z='min(zoom+0.001,1.2)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${w}x${h}:fps=30`;
+    return runFfmpeg(["-i", image, "-vf", vf, ...out]);
+  }
+  return runFfmpeg(["-f", "lavfi", "-i", `testsrc2=s=${w}x${h}:r=30`, ...out]);
 }
 
 /**

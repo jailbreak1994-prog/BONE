@@ -8,7 +8,19 @@ App tạo video **tự động bằng AI**: chỉ cần nhập chủ đề, app 
 4. **Lồng tiếng** — OpenAI TTS hoặc ElevenLabs (hỗ trợ tiếng Việt)
 5. **Dựng & ghép video** bằng ffmpeg — hiệu ứng chuyển động Ken Burns, khớp thời lượng giọng đọc, phụ đề SRT, nhạc nền
 
-Kết quả: file `video.mp4` (9:16 cho TikTok/Reels/Shorts, 16:9 cho YouTube, hoặc 1:1) + `subtitles.srt` + `script.json`.
+Giao diện kiểu studio gồm 4 tab:
+
+| Tab | Chức năng |
+|---|---|
+| **Auto Video** | Nhập chủ đề → app tự làm trọn video (kịch bản, hình, giọng, phụ đề) |
+| **Ảnh** | Tạo ảnh từ mô tả; chọn model, chất lượng, tỉ lệ, số lượng; tối đa 8 ảnh tham chiếu (GPT Image, Nano Banana) |
+| **Video** | Tạo clip từ kịch bản chuyển động + ảnh đầu / ảnh cuối; chọn tỉ lệ, thời lượng |
+| **Giọng đọc** | Chuyển văn bản thành giọng nói mp3 |
+
+Cột phải là thư viện lịch sử (tìm kiếm, sắp xếp Mới/Cũ, chỉnh cỡ lưới, xem, tải, xoá). Ảnh đã tạo có thể
+bấm 🎬 để dùng làm ảnh đầu cho video. Lịch sử được lưu trong `output/library.json` nên khởi động lại vẫn còn.
+
+Kết quả Auto Video: file `video.mp4` (9:16 cho TikTok/Reels/Shorts, 16:9 cho YouTube, hoặc 1:1) + `subtitles.srt` + `script.json`.
 
 ```
 Chủ đề ──► LLM ──► kịch bản (N cảnh: lời đọc + prompt hình ảnh)
@@ -60,6 +72,7 @@ npm run cli -- --topic "Hành trình hạt cà phê" --mode video --video runway
 | | Gemini `gemini` | `GEMINI_API_KEY` |
 | Ảnh | OpenAI gpt-image `openai` | `OPENAI_API_KEY` |
 | | Replicate FLUX `replicate` | `REPLICATE_API_TOKEN` |
+| | Nano Banana `nanobanana` (có ảnh tham chiếu) | `GEMINI_API_KEY` |
 | | Google Imagen `gemini` | `GEMINI_API_KEY` |
 | Video | Runway Gen-4 `runway` (ảnh → video) | `RUNWAY_API_KEY` |
 | | Google Veo `veo` | `GEMINI_API_KEY` |
@@ -80,6 +93,8 @@ một cảnh bị lỗi, app tự động dùng ảnh tĩnh của cảnh đó th
 ```
 src/
   server.js          HTTP server + REST API + phục vụ giao diện & file output
+  tasks.js           xử lý yêu cầu đơn lẻ của tab Ảnh / Video / Giọng đọc
+  library.js         thư viện lịch sử (output/library.json)
   cli.js             chạy pipeline từ dòng lệnh
   pipeline.js        điều phối các bước, hàng đợi job, tạo phụ đề SRT
   ffmpeg.js          dựng cảnh (Ken Burns / clip), ghép, trộn nhạc nền
@@ -103,10 +118,13 @@ hiển thị provider mới.
 
 | Method | Đường dẫn | Mô tả |
 |---|---|---|
-| `GET` | `/api/providers` | Danh sách provider và trạng thái API key |
-| `POST` | `/api/jobs` | Tạo video. Body: `{ topic, language, durationSec, sceneCount, aspect, style, visualMode, llm, image, video, tts, voice, subtitles }` |
-| `GET` | `/api/jobs` | Danh sách job |
-| `GET` | `/api/jobs/:id` | Trạng thái, tiến độ, nhật ký, kịch bản, link kết quả |
+| `GET` | `/api/providers` | Danh sách model và trạng thái API key |
+| `POST` | `/api/generate/image` | `{ model, prompt, aspect, quality, count, refs: [dataURL \| /output/...] }` |
+| `POST` | `/api/generate/video` | `{ model, prompt, aspect, duration, firstFrame, lastFrame }` |
+| `POST` | `/api/generate/audio` | `{ model, prompt, voice }` |
+| `POST` | `/api/generate/auto` | `{ topic, language, durationSec, sceneCount, aspect, style, visualMode, llm, image, video, tts, voice, subtitles }` |
+| `GET` | `/api/items?kind=image\|video\|audio\|auto` | Lịch sử |
+| `GET` / `DELETE` | `/api/items/:id` | Xem trạng thái / xoá một mục |
 
 ## Lưu ý
 
@@ -114,4 +132,4 @@ hiển thị provider mới.
   và chậm hơn ảnh nhiều — hãy thử với ít cảnh trước.
 - **Bảo mật:** API key chỉ nằm ở server (file `.env`), không gửi xuống trình duyệt. Server mặc định chỉ
   nghe trên `127.0.0.1`; nếu mở ra Internet hãy đặt sau reverse proxy có đăng nhập.
-- Job được giữ trong bộ nhớ — khởi động lại server sẽ mất lịch sử trên giao diện (file trong `output/` vẫn còn).
+- Việc đang chạy dở khi tắt server sẽ được đánh dấu lỗi khi mở lại; các mục đã xong vẫn còn nguyên.

@@ -7,97 +7,177 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
-    <h1>🎬 AI Video Studio</h1>
-    <p>Nhập chủ đề → AI viết kịch bản, tạo hình ảnh/video, lồng tiếng và ghép thành video hoàn chỉnh.</p>
+  <header class="topbar">
+    <div class="brand">🎬 AI VIDEO STUDIO</div>
+    <nav class="tabs" id="tabs">
+      <button data-tab="auto">Auto Video</button>
+      <button data-tab="image">Ảnh</button>
+      <button data-tab="video">Video</button>
+      <button data-tab="audio">Giọng đọc</button>
+    </nav>
+    <button class="ghost" id="keysBtn" title="Trạng thái API key">🔑 API key</button>
   </header>
 
-  <main>
-    <form id="form" class="card">
-      <label class="full">Chủ đề / ý tưởng video
-        <textarea name="topic" rows="3" required placeholder="VD: 5 sự thật thú vị về cà phê Việt Nam"></textarea>
-      </label>
+  <div class="studio">
+    <!-- ================= CỘT TRÁI ================= -->
+    <aside class="panel">
+      <!-- ---------- ẢNH ---------- -->
+      <form class="tool" data-tool="image">
+        <div class="box">
+          <div class="box-head"><span class="label">MODEL</span></div>
+          <select name="model" class="model" data-kind="image"></select>
+          <div class="row3">
+            <label data-show="qualities"><span class="label">CHẤT LƯỢNG</span>
+              <select name="quality"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select>
+            </label>
+            <label><span class="label">TỈ LỆ</span>
+              <select name="aspect"><option>1:1</option><option>16:9</option><option>9:16</option><option>4:3</option><option>3:4</option></select>
+            </label>
+            <label><span class="label">SỐ LƯỢNG</span>
+              <select name="count"><option>1</option><option>2</option><option>3</option><option>4</option></select>
+            </label>
+          </div>
+        </div>
 
-      <label>Ngôn ngữ lời đọc
-        <select name="language">
-          <option>Tiếng Việt</option><option>English</option><option>ภาษาไทย</option>
-          <option>日本語</option><option>한국어</option><option>中文</option>
-        </select>
-      </label>
-      <label>Khung hình
-        <select name="aspect">
-          <option value="9:16">9:16 – TikTok / Reels / Shorts</option>
-          <option value="16:9">16:9 – YouTube</option>
-          <option value="1:1">1:1 – Vuông</option>
-        </select>
-      </label>
-      <label>Thời lượng (giây)
-        <input type="number" name="durationSec" min="5" max="600" value="30" />
-      </label>
-      <label>Số cảnh
-        <input type="number" name="sceneCount" min="1" max="30" value="5" />
-      </label>
-      <label class="full">Phong cách hình ảnh
-        <input name="style" value="cinematic, photorealistic, soft lighting" />
-      </label>
-
-      <fieldset class="full">
-        <legend>Model AI</legend>
-        <div class="grid">
-          <label>✍️ Kịch bản (LLM) <select name="llm" data-kind="llm"></select></label>
-          <label>🎞️ Kiểu hình ảnh
-            <select name="visualMode">
-              <option value="image">Ảnh AI + hiệu ứng chuyển động</option>
-              <option value="video">Video clip AI (chậm & đắt hơn)</option>
-            </select>
-          </label>
-          <label>🖼️ Tạo ảnh <select name="image" data-kind="image"></select></label>
-          <label id="videoField">🎥 Tạo video <select name="video" data-kind="video"></select></label>
-          <label>🔊 Giọng đọc (TTS) <select name="tts" data-kind="tts"></select></label>
-          <label>Giọng (tuỳ chọn)
-            <input name="voice" placeholder="VD: alloy / nova, hoặc voice_id ElevenLabs" />
+        <div class="box" data-show="supportsRefs">
+          <div class="box-head"><b>Ảnh tham chiếu</b><span class="chip" id="refCount">0/8</span></div>
+          <div class="refs" id="refs"></div>
+          <label class="drop" id="refDrop">
+            <input type="file" accept="image/png,image/jpeg,image/webp" multiple hidden />
+            <span class="drop-icon">🖼️</span>
+            <b>Thêm tham chiếu</b>
+            <small>Tối đa 8 ảnh · kéo thả hoặc bấm để chọn</small>
           </label>
         </div>
-        <p class="hint">Provider có dấu ⚠️ chưa có API key trong file <code>.env</code>. Chọn “Mock” để chạy thử miễn phí.</p>
-      </fieldset>
+        <p class="note" data-hide="supportsRefs">Model này không nhận ảnh tham chiếu. Chọn GPT Image hoặc Nano Banana nếu cần.</p>
 
-      <label class="check full"><input type="checkbox" name="subtitles" checked /> Gắn phụ đề (SRT) vào video</label>
-
-      <button type="submit" class="full" id="submit">🚀 Tạo video</button>
-      <p id="formError" class="error full" hidden></p>
-    </form>
-
-    <section id="jobView" class="card" hidden>
-      <div class="job-head">
-        <h2 id="jobTitle">Đang xử lý…</h2>
-        <span id="jobStatus" class="badge"></span>
-      </div>
-      <div class="progress"><div id="bar"></div></div>
-      <p id="jobStep" class="muted"></p>
-      <div id="result" hidden>
-        <video id="player" controls playsinline></video>
-        <div class="links">
-          <a id="dlVideo" download>⬇️ Tải video</a>
-          <a id="dlSrt" download>⬇️ Phụ đề .srt</a>
-          <a id="dlScript" target="_blank">📄 Kịch bản JSON</a>
+        <div class="box grow">
+          <div class="box-head"><b>MÔ TẢ</b></div>
+          <textarea name="prompt" placeholder="Mô tả hình ảnh của bạn…"></textarea>
         </div>
+        <button class="primary" type="submit">Tạo Ảnh ✦</button>
+      </form>
+
+      <!-- ---------- VIDEO ---------- -->
+      <form class="tool" data-tool="video">
+        <div class="box">
+          <div class="box-head"><span class="label">MODEL</span></div>
+          <select name="model" class="model" data-kind="video"></select>
+          <div class="row2">
+            <label><span class="label">TỈ LỆ</span>
+              <select name="aspect"><option>16:9</option><option>9:16</option><option>1:1</option></select>
+            </label>
+            <label><span class="label">THỜI LƯỢNG</span><select name="duration" id="durations"></select></label>
+          </div>
+        </div>
+
+        <div class="frames">
+          <div class="frame" data-frame="firstFrame">
+            <input type="file" accept="image/png,image/jpeg,image/webp" hidden />
+            <div class="frame-empty"><small class="opt">Tuỳ chọn</small><span>🖼️</span></div>
+            <b>Ảnh đầu</b>
+            <button type="button" class="frame-x" title="Bỏ ảnh">✕</button>
+          </div>
+          <div class="frame" data-frame="lastFrame">
+            <input type="file" accept="image/png,image/jpeg,image/webp" hidden />
+            <div class="frame-empty"><small class="opt">Tuỳ chọn</small><span>🖼️</span></div>
+            <b>Ảnh cuối</b>
+            <button type="button" class="frame-x" title="Bỏ ảnh">✕</button>
+          </div>
+        </div>
+
+        <div class="box grow">
+          <div class="box-head"><b>KỊCH BẢN</b></div>
+          <textarea name="prompt" placeholder="Mô tả cảnh và chuyển động, VD: sóng biển đánh lên mặt chữ, máy quay lia chậm…"></textarea>
+        </div>
+        <button class="primary" type="submit">Tạo Video ✦</button>
+      </form>
+
+      <!-- ---------- GIỌNG ĐỌC ---------- -->
+      <form class="tool" data-tool="audio">
+        <div class="box">
+          <div class="box-head"><span class="label">MODEL</span></div>
+          <select name="model" class="model" data-kind="tts"></select>
+          <label><span class="label">GIỌNG ĐỌC</span>
+            <select name="voice" id="voiceSelect"></select>
+            <input name="voiceId" id="voiceInput" placeholder="voice_id (để trống = giọng mặc định)" />
+          </label>
+        </div>
+        <div class="box grow">
+          <div class="box-head"><b>NỘI DUNG</b><span class="chip" id="charCount">0/4000</span></div>
+          <textarea name="prompt" maxlength="4000" placeholder="Nhập nội dung cần đọc…"></textarea>
+        </div>
+        <button class="primary" type="submit">Tạo Giọng đọc ✦</button>
+      </form>
+
+      <!-- ---------- AUTO VIDEO ---------- -->
+      <form class="tool" data-tool="auto">
+        <div class="box">
+          <div class="box-head"><b>CHỦ ĐỀ VIDEO</b></div>
+          <textarea name="topic" rows="3" placeholder="VD: 5 sự thật thú vị về cà phê Việt Nam"></textarea>
+          <p class="note">AI tự viết kịch bản → tạo hình → lồng tiếng → ghép thành video hoàn chỉnh có phụ đề.</p>
+        </div>
+        <div class="box">
+          <div class="row2">
+            <label><span class="label">NGÔN NGỮ</span>
+              <select name="language"><option>Tiếng Việt</option><option>English</option><option>ภาษาไทย</option><option>日本語</option><option>한국어</option><option>中文</option></select>
+            </label>
+            <label><span class="label">TỈ LỆ</span>
+              <select name="aspect"><option>9:16</option><option>16:9</option><option>1:1</option></select>
+            </label>
+            <label><span class="label">THỜI LƯỢNG (GIÂY)</span><input type="number" name="durationSec" min="5" max="600" value="30" /></label>
+            <label><span class="label">SỐ CẢNH</span><input type="number" name="sceneCount" min="1" max="30" value="5" /></label>
+          </div>
+          <label><span class="label">PHONG CÁCH HÌNH ẢNH</span><input name="style" value="cinematic, photorealistic, soft lighting" /></label>
+        </div>
+        <div class="box">
+          <div class="box-head"><span class="label">MODEL AI</span></div>
+          <label><span class="label">✍️ KỊCH BẢN</span><select name="llm" class="model" data-kind="llm"></select></label>
+          <label><span class="label">🎞️ KIỂU HÌNH</span>
+            <select name="visualMode"><option value="image">Ảnh AI + chuyển động</option><option value="video">Video clip AI (đắt hơn)</option></select>
+          </label>
+          <label><span class="label">🖼️ TẠO ẢNH</span><select name="image" class="model" data-kind="image"></select></label>
+          <label data-mode="video"><span class="label">🎥 TẠO VIDEO</span><select name="video" class="model" data-kind="video"></select></label>
+          <label><span class="label">🔊 GIỌNG ĐỌC</span><select name="tts" class="model" data-kind="tts"></select></label>
+          <label><span class="label">GIỌNG (TUỲ CHỌN)</span><input name="voice" placeholder="VD: nova, hoặc voice_id ElevenLabs" /></label>
+          <label class="check"><input type="checkbox" name="subtitles" checked /> Gắn phụ đề</label>
+        </div>
+        <button class="primary" type="submit">Tạo Auto Video ✦</button>
+      </form>
+      <p class="error" id="formError" hidden></p>
+    </aside>
+
+    <!-- ================= CỘT PHẢI ================= -->
+    <section class="gallery">
+      <div class="toolbar">
+        <h2 id="galleryTitle">Lịch sử</h2>
+        <div class="search"><span>🔍</span><input id="search" placeholder="Tìm trong lịch sử…" /></div>
+        <div class="seg" id="sort"><button data-sort="new" class="on">Mới</button><button data-sort="old">Cũ</button></div>
+        <label class="size" title="Kích thước lưới">▦ <input type="range" id="cols" min="2" max="8" value="4" /></label>
       </div>
-      <details id="scriptBox" hidden>
-        <summary>Kịch bản</summary>
-        <ol id="scenes"></ol>
-      </details>
-      <details open>
-        <summary>Nhật ký</summary>
-        <pre id="logs"></pre>
-      </details>
+      <div class="grid" id="grid"></div>
+      <div class="empty" id="empty" hidden>
+        <div class="empty-icon">🕘</div>
+        <p>Chưa có lịch sử</p>
+      </div>
     </section>
+  </div>
 
-    <section class="card">
-      <h2>Lịch sử</h2>
-      <ul id="history" class="history"><li class="muted">Chưa có video nào.</li></ul>
-    </section>
-  </main>
+  <!-- Xem chi tiết -->
+  <dialog id="viewer">
+    <button class="close" data-close>✕</button>
+    <div id="viewerBody"></div>
+  </dialog>
 
+  <!-- Trạng thái API key -->
+  <dialog id="keys">
+    <button class="close" data-close>✕</button>
+    <h2>🔑 Trạng thái API key</h2>
+    <p class="note">Key được đặt trong file <code>.env</code> của app (mở bằng lệnh <code>notepad .env</code>), sau đó chạy lại <code>npm start</code>.</p>
+    <div id="keysBody"></div>
+  </dialog>
+
+  <div class="toast" id="toast" hidden></div>
   <script src="app.js" type="module"></script>
 </body>
 </html>

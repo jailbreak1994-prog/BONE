@@ -5,6 +5,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEFAULTS, OUTPUT_DIR, newJob, providerCatalog, runJob, validateOptions } from "./pipeline.js";
 import { FFMPEG } from "./ffmpeg.js";
+import { addItem, getItem, listItems, loadLibrary, removeItem, saveLibrary } from "./library.js";
+import { createAudioTask, createImageTask, createVideoTask } from "./tasks.js";
+import { LLM_PROVIDERS } from "./providers/llm.js";
 
 const PUBLIC_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../public");
 const PORT = Number(process.env.PORT || 3000);
@@ -22,10 +25,10 @@ const MIME = {
   ".jpg": "image/jpeg",
   ".srt": "text/plain; charset=utf-8",
   ".svg": "image/svg+xml",
+  ".webp": "image/webp",
 };
 
-// ---------- Hàng đợi job (giữ trong bộ nhớ) ----------
-const jobs = new Map();
+// ---------- Hàng đợi Auto Video ----------
 const queue = [];
 let running = 0;
 
@@ -33,17 +36,34 @@ function pump() {
   while (running < MAX_PARALLEL_JOBS && queue.length) {
     const job = queue.shift();
     running++;
-    runJob(job).finally(() => {
+    runJob(job, (j) => {
+      if (j.status === "done") j.outputs = [{ type: "video", url: j.result.video }];
+      saveLibrary();
+    }).finally(() => {
       running--;
       pump();
     });
   }
 }
 
-function publicJob(job) {
-  const { id, status, step, progress, logs, script, result, error, createdAt, options } = job;
-  return { id, status, step, progress, logs, script, result, error, createdAt, topic: options.topic, options };
+function createAutoJob(input) {
+  const options = validateOptions(input);
+  const job = newJob(options);
+  Object.assign(job, {
+    kind: "auto",
+    prompt: options.topic,
+    model: options.llm,
+    modelName: LLM_PROVIDERS[options.llm].name,
+    params: { aspect: options.aspect, durationSec: options.durationSec, sceneCount: options.sceneCount },
+    outputs: [],
+  });
+  addItem(job);
+  queue.push(job);
+  pump();
+  return job;
 }
+
+const GENERATORS = { image: createImageTask, video: createVideoTask, audio: createAudioTask, auto: createAutoJob };
 
 // ---------- HTTP helpers ----------
 function sendJson(res, status, body) {
@@ -111,25 +131,25 @@ const server = http.createServer(async (req, res) => {
     if (p === "/api/providers" && req.method === "GET") {
       return sendJson(res, 200, { providers: providerCatalog(), defaults: DEFAULTS });
     }
-    if (p === "/api/jobs" && req.method === "GET") {
-      const list = [...jobs.values()].reverse().map(({ id, status, step, progress, createdAt, options }) => ({
-        id, status, step, progress, createdAt, topic: options.topic,
-      }));
-      return sendJson(res, 200, { jobs: list });
+    if (p === "/api/items" && req.method === "GET") {
+      return sendJson(res, 200, { items: listItems(url.searchParams.get("kind")) });
     }
-    if (p === "/api/jobs" && req.method === "POST") {
-      const options = validateOptions(await readBody(req));
-      const job = newJob(options);
-      jobs.set(job.id, job);
-      queue.push(job);
-      pump();
-      return sendJson(res, 202, publicJob(job));
+    const gen = p.match(/^\/api\/generate\/(image|video|audio|auto)$/);
+    if (gen && req.method === "POST") {
+      const item = await GENERATORS[gen[1]](await readBody(req, 60_000_000));
+      return sendJson(res, 202, item);
     }
-    const m = p.match(/^\/api\/jobs\/([\w-]+)$/);
-    if (m && req.method === "GET") {
-      const job = jobs.get(m[1]);
-      return job ? sendJson(res, 200, publicJob(job)) : sendJson(res, 404, { error: "Không tìm thấy job" });
+    const one = p.match(/^\/api\/(?:items|jobs)\/([\w-]+)$/);
+    if (one && req.method === "GET") {
+      const item = getItem(one[1]);
+      return item ? sendJson(res, 200, item) : sendJson(res, 404, { error: "Không tìm thấy" });
     }
+    if (one && req.method === "DELETE") {
+      return (await removeItem(one[1])) ? sendJson(res, 200, { ok: true }) : sendJson(res, 404, { error: "Không tìm thấy" });
+    }
+    // Giữ tương thích API cũ.
+    if (p === "/api/jobs" && req.method === "POST") return sendJson(res, 202, createAutoJob(await readBody(req)));
+    if (p === "/api/jobs" && req.method === "GET") return sendJson(res, 200, { jobs: listItems("auto") });
     const isRead = req.method === "GET" || req.method === "HEAD";
     if (p.startsWith("/output/") && isRead) {
       return serveFile(req, res, OUTPUT_DIR, p.slice("/output/".length));
@@ -142,6 +162,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 await fsp.mkdir(OUTPUT_DIR, { recursive: true });
+loadLibrary();
 server.listen(PORT, HOST, () => {
   console.log(`🎬 AI Video Studio đang chạy: http://${HOST === "0.0.0.0" ? "localhost" : HOST}:${PORT}`);
   console.log(`   ffmpeg: ${FFMPEG}`);

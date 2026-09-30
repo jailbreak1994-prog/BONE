@@ -34,10 +34,16 @@ async function mockTts({ text, dest }) {
   return dest;
 }
 
+// voices: danh sách giọng gợi ý cho giao diện (ElevenLabs dùng voice_id tự nhập).
 export const TTS_PROVIDERS = {
-  openai: { name: "OpenAI TTS", env: "OPENAI_API_KEY", run: openaiTts },
-  elevenlabs: { name: "ElevenLabs (đa ngôn ngữ)", env: "ELEVENLABS_API_KEY", run: elevenlabsTts },
-  mock: { name: "Mock (im lặng)", env: null, run: mockTts },
+  openai: {
+    name: "OpenAI TTS",
+    env: "OPENAI_API_KEY",
+    voices: ["alloy", "ash", "ballad", "coral", "echo", "fable", "nova", "onyx", "sage", "shimmer", "verse"],
+    run: openaiTts,
+  },
+  elevenlabs: { name: "ElevenLabs (đa ngôn ngữ)", env: "ELEVENLABS_API_KEY", voices: [], run: elevenlabsTts },
+  mock: { name: "Mock (im lặng, miễn phí)", env: null, voices: [], run: mockTts },
 };
 
 export async function generateSpeech(providerId, opts) {
